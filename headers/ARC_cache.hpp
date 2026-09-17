@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <optional>
 
 namespace ARC {
 
@@ -61,7 +62,7 @@ public:
             }
 
             const auto added = list_t1.emplace(list_t1.begin(), url, data);
-            const auto result = map_.emplace(added->url_, {ListId::T1, added});
+            const auto result = map_.emplace(added->url_, PageLocation{ListId::T1, added});
             if (!result.second) {
                 list_t1.erase(added);
                 return Status::already_exists;
@@ -113,43 +114,64 @@ public:
         list_t2.splice(list_t2.begin(), source_list, page);
         source_list_id = ListId::T2;
 
-        data = std::addressof(page->data);
+        data = std::addressof(*page->data_);
 
         return Status::success;
-        }
+    }
 
 private:
     struct Page {
         Page(const std::string& url, Data data): url_(url), data_(data) {}
 
         std::string url_;
-        Data data_;
+        std::optional<Data> data_;
     };
 
     using PageList = std::list<Page>;
     using PageIterator = PageList::iterator;
 
     struct PageLocation {
-        List_id list_id
-        PageIterator iterator
+        ListId list_id;
+        PageIterator iterator;
     };
 
     std::array<PageList, number_of_lists> lists_;
     std::unordered_map<std::string, PageLocation> map_;
 
     PageList& get_list(ListId id) {
-        return lists_[id];
+        return lists_[static_cast<std::size_t>(id)];
     }
 
     void evict_to_ghost(bool is_b2_hit) {
-        // const auto target_id = id == ListId::T1 ? ListId::B1 : ListId::B2;
-        // auto& target_list = get_list(target_id);
-        //     if (target_list.size() == capacity - size_parameter) {
-        //         auto& page = std::prev(target_list.end());
-        //         map_.erase(page->url_);
-        //         target_list.erase(page);
-        //     }
-        //     target_list.splice(target_list.begin(), get_list(id), page);
+        auto& list_t1 = get_list(ListId::T1);
+        if (list_t1.size() < size_parameter) {
+            auto& list_b1 = get_list(ListId::B1);
+            auto page = std::prev(list_t1.end());
+            page->data_.reset();
+            list_b1.splice(list_b1.begin(), list_t1, page);
+        }
+        else if (list_t1.size() > size_parameter) {
+            auto& list_t2 = get_list(ListId::T2);
+            auto& list_b2 = get_list(ListId::B2);
+            auto page = std::prev(list_t2.end());
+            page->data_.reset();
+            list_b2.splice(list_b2.begin(), list_t2, page);
+        }
+        else {
+            if (is_b2_hit) {
+                auto& list_b2 = get_list(ListId::B2);
+                auto page = std::prev(list_t1.end());
+                page->data_.reset();
+                list_b2.splice(list_b2.begin(), list_t1, page);
+            }
+            else {
+                auto& list_t2 = get_list(ListId::T2);
+                auto& list_b1 = get_list(ListId::B1);
+                auto page = std::prev(list_t2.end());
+                page->data_.reset();
+                list_b1.splice(list_b1.begin(), list_t2, page);
+            }
+        }
     }
 
     void evict(PageList& list, PageIterator page) {
