@@ -17,11 +17,6 @@ enum class Status {
     already_exists
 };
 
-struct PageInfo {
-    std::string url_;
-    std::size_t frequency_;
-};
-
 template <typename Data> class Cache {
 public:
     static constexpr std::size_t capacity = 4;
@@ -34,7 +29,7 @@ public:
         const auto found = map_.find(url);
         if (found == map_.end()) {
             const auto lfu_is_full = (pages_.size() == capacity);
-            const auto added = pages_.emplace(std::prev(pages_.end()), url, data);
+            const auto added = pages_.emplace(pages_.end(), url, data);
             const auto result = map_.emplace(added->url_, added);
             if (!result.second) {
                 pages_.erase(added);
