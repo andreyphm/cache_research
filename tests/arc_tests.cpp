@@ -1,4 +1,3 @@
-#include <array>
 #include "ARC_cache.hpp"
 
 #include <cstdint>
@@ -207,7 +206,7 @@ void reload_b1() {
     insert(cache, "B", "reloaded-B");
     expect_hit(cache, "B", "reloaded-B");
     expect_miss(cache, "A");
-    require(cache.size_parameter <= StringCache::capacity,
+    require(cache.get_size_parameter() <= StringCache::capacity,
             "adaptation parameter exceeds capacity");
 }
 
@@ -222,7 +221,7 @@ void reload_b2() {
     insert(cache, "A", "reloaded-A");
     expect_hit(cache, "A", "reloaded-A");
     expect_miss(cache, "E");
-    require(cache.size_parameter <= StringCache::capacity,
+    require(cache.get_size_parameter() <= StringCache::capacity,
             "adaptation parameter exceeds capacity");
 }
 
@@ -277,7 +276,7 @@ public:
             last_loaded_[key] = value;
             expect_hit(cache_, key, value);
         }
-        require(cache_.size_parameter <= StringCache::capacity,
+        require(cache_.get_size_parameter() <= StringCache::capacity,
                 "adaptation parameter outside [0, capacity]");
     }
 
