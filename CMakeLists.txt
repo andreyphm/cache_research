@@ -11,5 +11,5 @@ set(SRCS
 add_library(cache_research STATIC ${SRCS})
 target_include_directories(cache_research PUBLIC "headers")
 
-add_executable(cache_research.out main.cpp)
+add_executable(cache_research.out source/main.cpp)
 target_link_libraries(cache_research.out cache_research)
