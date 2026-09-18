@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <array>
 
 namespace ARC {
 
@@ -144,34 +145,20 @@ private:
 
     void evict_to_ghost(bool is_b2_hit) {
         auto& list_t1 = get_list(ListId::T1);
-        if (list_t1.size() < size_parameter) {
-            auto& list_b1 = get_list(ListId::B1);
-            auto page = std::prev(list_t1.end());
-            page->data_.reset();
-            list_b1.splice(list_b1.begin(), list_t1, page);
-        }
-        else if (list_t1.size() > size_parameter) {
-            auto& list_t2 = get_list(ListId::T2);
-            auto& list_b2 = get_list(ListId::B2);
-            auto page = std::prev(list_t2.end());
-            page->data_.reset();
-            list_b2.splice(list_b2.begin(), list_t2, page);
-        }
-        else {
-            if (is_b2_hit) {
-                auto& list_b2 = get_list(ListId::B2);
-                auto page = std::prev(list_t1.end());
-                page->data_.reset();
-                list_b2.splice(list_b2.begin(), list_t1, page);
-            }
-            else {
-                auto& list_t2 = get_list(ListId::T2);
-                auto& list_b1 = get_list(ListId::B1);
-                auto page = std::prev(list_t2.end());
-                page->data_.reset();
-                list_b1.splice(list_b1.begin(), list_t2, page);
-            }
-        }
+
+        const bool evict_from_t1 = !list_t1.empty() && (list_t1.size() > size_parameter
+                                   || (is_b2_hit && list_t1.size() == size_parameter));
+
+        const auto source_id = evict_from_t1 ? ListId::T1 : ListId::T2;
+        const auto ghost_id = evict_from_t1 ? ListId::B1 : ListId::B2;
+
+        auto& source = get_list(source_id);
+        auto& ghost = get_list(ghost_id);
+        const auto page = std::prev(source.end());
+
+        page->data_.reset();
+        ghost.splice(ghost.begin(), source, page);
+        map_.at(page->url_).list_id = ghost_id;
     }
 
     void evict(PageList& list, PageIterator page) {
