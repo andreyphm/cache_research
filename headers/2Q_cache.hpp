@@ -95,10 +95,11 @@ public:
             case ListId::A1out_:
                 return Status::not_found;
 
-            case ListId::Am_:
+            case ListId::Am_: {
                 auto& list_am = get_list(ListId::Am_);
                 list_am.splice(list_am.begin(), list_am, page);
                 break;
+            }
 
             case ListId::A1in_:
             default:
