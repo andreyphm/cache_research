@@ -32,13 +32,15 @@ public:
         const auto found = map_.find(url);
         if (found == map_.end()) {
             auto& list_a1in = get_list(ListId::A1in_);
-            if (list_a1in.size() > kin) {
-                auto& list_a1out = get_list(ListId::A1out_);
-                evict(list_a1out, std::prev(list_a1out.end()));
-                evict_to_ghost();
-            } else {
-                auto& list_am = get_list(ListId::Am_);
-                evict(list_am, std::prev(list_am.end()));
+            if (auto& list_am = get_list(ListId::Am_); list_a1in.size() + list_am.size() == capacity) {
+                if (list_a1in.size() > kin) {
+                    if (auto& list_a1out = get_list(ListId::A1out_); list_a1out.size() == kout) {
+                        evict(list_a1out, std::prev(list_a1out.end()));
+                    }
+                    evict_to_ghost();
+                } else {
+                    evict(list_am, std::prev(list_am.end()));
+                }
             }
 
             const auto added = list_a1in.emplace(list_a1in.begin(), url, data);
@@ -57,16 +59,16 @@ public:
                 break;
 
             case ListId::Am_:
-                auto& list_am = get_list(ListId::Am_);
                 list_am.splice(list_am.begin(), list_am, found->second.iterator_);
                 break;
 
             case ListId::A1out_:
-                if (auto& list_a1in = get_list(ListId::A1in_); list_am.size() + list_a1in.size() == capacity && list_a1in.size() > kin) {
-                        evict_to_ghost();
+                if (auto& list_a1in = get_list(ListId::A1in_); list_a1in.size() + list_am.size() == capacity && list_a1in.size() > kin) {
+                    evict_to_ghost();
                 } else {
                     evict(list_am, std::prev(list_am.end()));
                 }
+                list_am.splice(list_am.begin(), get_list(list_id), found->second.iterator_);
                 list_id = ListId::Am_;
                 break;
 
@@ -75,7 +77,6 @@ public:
         }
 
         found->second.iterator_->data_ = data;
-        list_am.splice(list_am.begin(), get_list(list_id), found->second.iterator_);
 
         return Status::success;
     }
@@ -143,10 +144,6 @@ private:
         auto& list_a1in = get_list(ListId::A1in_);
         auto& list_a1out = get_list(ListId::A1out_);
         const auto page = std::prev(list_a1in.end());
-
-        if (list_a1out.size() == kout) {
-            evict(std::prev(list_a1out.end()));
-        }
 
         page->data_.reset();
         list_a1out.splice(list_a1out.begin(), list_a1in, page);
