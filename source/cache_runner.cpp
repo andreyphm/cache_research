@@ -13,67 +13,68 @@
 
 namespace {
 
-struct Level {
+class Level {
+public:
     using Storage = SlowGetPage<std::string>;
     using Lfu = LFU::Cache<std::string, Level>;
     using Arc = ARC::Cache<std::string, Level>;
     using TwoQ = TWO_Q::Cache<std::string, Level>;
     using Lirs = LIRS::Cache<std::string, Level>;
 
-    std::variant<Storage, Lfu, Arc, TwoQ, Lirs> cache;
-    Level* upper = nullptr;
-    Level* const lower;
-    std::size_t* const hit_count;
-    std::size_t fetch_count = 0;
-
-    Level(std::size_t& misses) : lower(nullptr), hit_count(nullptr) {
-        std::get<Storage>(cache).load = [&misses](const std::string& key) {
+    Level(std::size_t& misses) : lower_(nullptr), hit_count_(nullptr) {
+        std::get<Storage>(cache_).load = [&misses](const std::string& key) {
             ++misses;
             return key;
         };
     }
 
-    Level(const CachePolicy policy, const std::size_t capacity, Level& lower_level,
-          std::size_t& level_hits)
-        : lower(&lower_level), hit_count(&level_hits) {
-        lower_level.upper = this;
+    Level(const CachePolicy policy, const std::size_t capacity, Level& lower_level, std::size_t& level_hits)
+        : lower_(&lower_level), hit_count_(&level_hits) {
+        lower_level.upper_ = this;
         const auto invalidate_upper = [this](const std::string& key) {
-            if (upper) {
-                upper->remove(key);
+            if (upper_) {
+                upper_->remove(key);
             }
         };
         switch (policy) {
             case CachePolicy::LFU:
-                cache.emplace<Lfu>(lower_level, capacity, invalidate_upper);
+                cache_.emplace<Lfu>(lower_level, capacity, invalidate_upper);
                 break;
             case CachePolicy::ARC:
-                cache.emplace<Arc>(lower_level, capacity, invalidate_upper);
+                cache_.emplace<Arc>(lower_level, capacity, invalidate_upper);
                 break;
             case CachePolicy::TWO_Q:
-                cache.emplace<TwoQ>(lower_level, capacity, invalidate_upper);
+                cache_.emplace<TwoQ>(lower_level, capacity, invalidate_upper);
                 break;
             case CachePolicy::LIRS:
-                cache.emplace<Lirs>(lower_level, capacity, invalidate_upper);
+                cache_.emplace<Lirs>(lower_level, capacity, invalidate_upper);
                 break;
         }
     }
 
     std::string fetch(const std::string& key) {
-        ++fetch_count;
-        if (!lower) {
-            return std::visit([&](auto& value) { return value.fetch(key); }, cache);
+        ++fetch_count_;
+        if (!lower_) {
+            return std::visit([&](auto& value) { return value.fetch(key); }, cache_);
         }
-        const auto lower_fetches = lower->fetch_count;
-        const auto data = std::visit([&](auto& value) { return value.fetch(key); }, cache);
-        if (lower->fetch_count == lower_fetches) {
-            ++(*hit_count);
+        const auto lower_fetches = lower_->fetch_count_;
+        const auto data = std::visit([&](auto& value) { return value.fetch(key); }, cache_);
+        if (lower_->fetch_count_ == lower_fetches) {
+            ++(*hit_count_);
         }
         return data;
     }
 
     void remove(const std::string& key) {
-        std::visit([&](auto& value) { value.remove(key); }, cache);
+        std::visit([&](auto& value) { value.remove(key); }, cache_);
     }
+
+private:
+    std::variant<Storage, Lfu, Arc, TwoQ, Lirs> cache_;
+    Level* upper_ = nullptr;
+    Level* const lower_;
+    std::size_t* const hit_count_;
+    std::size_t fetch_count_ = 0;
 };
 
 } // namespace
