@@ -7,7 +7,6 @@
 #include <functional>
 #include <string>
 
-namespace Tests {
 namespace {
 
 constexpr std::size_t test_capacity = 8;
@@ -411,5 +410,4 @@ TEST(TwoQ, am_hit_refreshes_recency) {
     expect_hit(cache, lower, "0", "value-0");
 }
 
-}
 }

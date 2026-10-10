@@ -12,7 +12,6 @@
 #include <string>
 #include <unordered_map>
 
-namespace Tests {
 namespace {
 
 constexpr std::size_t test_capacity = 4;
@@ -301,5 +300,4 @@ TEST(LFU, empty_loader_is_only_needed_on_miss) {
     expect_load(cache, lower, "missing", "loaded");
 }
 
-}
 }

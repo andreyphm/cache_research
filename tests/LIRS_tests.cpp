@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <string>
 
-namespace Tests {
 namespace {
 
 constexpr std::size_t test_capacity = 8;
@@ -353,5 +352,4 @@ TEST(LIRS, demoted_lir_needs_two_hits_to_regain_protection) {
     touch_lir(cache, lower, 2);
 }
 
-}
 }
